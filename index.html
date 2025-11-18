@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fractal Camo / Tileable Pattern Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #020617;
+      color: #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      min-height: 100vh;
+    }
+
+    h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.6rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+
+    .panel {
+      background: #020617;
+      border-radius: 1rem;
+      padding: 1rem 1.2rem;
+      border: 1px solid #1f2937;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+      color: #9ca3af;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 0.35rem;
+      border-radius: 0.6rem;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.6rem;
+    }
+
+    input[type="number"],
+    input[type="range"] {
+      width: 100%;
+    }
+
+    input[type="number"] {
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.8rem;
+    }
+
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+
+    .small {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .control-group {
+      flex: 1 1 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #020617;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.1s ease;
+    }
+
+    button.secondary {
+      background: #111827;
+      color: #e5e7eb;
+      box-shadow: none;
+      border: 1px solid #374151;
+    }
+
+    button:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 5px 16px rgba(15, 23, 42, 0.8);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .swatch {
+      border-radius: 0.75rem;
+      background: #020617;
+      border: 1px solid #374151;
+      padding: 0.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      align-items: stretch;
+    }
+
+    .swatch-top {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .swatch-color {
+      width: 26px;
+      height: 26px;
+      border-radius: 0.6rem;
+      border: 1px solid #111827;
+    }
+
+    .swatch-hex {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      word-break: break-all;
+    }
+
+    .swatch input[type="color"] {
+      border: none;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .preview-wrapper {
+      background: radial-gradient(circle at top, #1e293b 0, #020617 55%);
+      border-radius: 1rem;
+      padding: 0.8rem;
+      border: 1px solid #1f2937;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      max-height: 80vh;
+      border-radius: 0.75rem;
+      background: #020617;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fractal Camo / Tileable Pattern Generator</h1>
+    <div class="small">
+      Upload up to 3 photos of the environment → extract a color palette → tweak colors → generate an endless, tileable SVG camo.
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <h2>Images & Palette</h2>
+
+      <label>Source images (terrain / environment)</label>
+      <input type="file" id="img1" accept="image/*">
+      <input type="file" id="img2" accept="image/*">
+      <input type="file" id="img3" accept="image/*">
+
+      <div class="row">
+        <div class="control-group">
+          <label for="colorCount">Number of colors</label>
+          <input type="number" id="colorCount" min="2" max="16" value="6">
+          <span class="small">K-means palette size</span>
+        </div>
+        <div class="control-group">
+          <label>&nbsp;</label>
+          <button id="extractBtn">🎨 Extract palette</button>
+        </div>
+      </div>
+
+      <div class="small">
+        After extraction, click any color to adjust it. These are the only colors used for the camo.
+      </div>
+
+      <div id="palette" class="palette"></div>
+
+      <h2>Pattern settings</h2>
+
+      <div class="row">
+        <div class="control-group">
+          <label for="tileWidth">Tile width (px)</label>
+          <input type="number" id="tileWidth" min="200" max="2000" value="800">
+        </div>
+        <div class="control-group">
+          <label for="tileHeight">Tile height (px)</label>
+          <input type="number" id="tileHeight" min="200" max="2000" value="600">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="control-group">
+          <label for="minBlob">Min blob size (px)</label>
+          <input type="number" id="minBlob" min="5" max="400" value="30">
+        </div>
+        <div class="control-group">
+          <label for="maxBlob">Max blob size (px)</label>
+          <input type="number" id="maxBlob" min="10" max="600" value="140">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="control-group">
+          <label for="roughness">Fractal vs round (edge roughness)</label>
+          <input type="range" id="roughness" min="0" max="1" step="0.05" value="0.4">
+          <span class="small" id="roughnessLabel">0.40 – slightly jagged blobs</span>
+        </div>
+        <div class="control-group">
+          <label for="complexity">Blob complexity (arms & elongation)</label>
+          <input type="range" id="complexity" min="0" max="1" step="0.05" value="0.5">
+          <span class="small" id="complexityLabel">0.50 – moderate arms / elongation</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="control-group">
+          <label for="blobCount">Blob density (# blobs)</label>
+          <input type="number" id="blobCount" min="20" max="2000" value="300">
+          <span class="small">More blobs = denser pattern</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="generateBtn">🔁 Generate pattern</button>
+        <button id="downloadBtn" class="secondary" disabled>⬇️ Download SVG</button>
+      </div>
+
+      <div class="small">
+        Output is strictly tileable left/right and top/bottom (you can repeat the SVG as a seamless pattern).
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Preview</h2>
+      <div class="preview-wrapper">
+        <svg id="patternSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+
+    const imgInputs = [
+      document.getElementById("img1"),
+      document.getElementById("img2"),
+      document.getElementById("img3")
+    ];
+    const extractBtn = document.getElementById("extractBtn");
+    const paletteContainer = document.getElementById("palette");
+    const colorCountInput = document.getElementById("colorCount");
+
+    const tileWidthInput = document.getElementById("tileWidth");
+    const tileHeightInput = document.getElementById("tileHeight");
+    const minBlobInput = document.getElementById("minBlob");
+    const maxBlobInput = document.getElementById("maxBlob");
+    const roughnessInput = document.getElementById("roughness");
+    const roughnessLabel = document.getElementById("roughnessLabel");
+    const complexityInput = document.getElementById("complexity");
+    const complexityLabel = document.getElementById("complexityLabel");
+    const blobCountInput = document.getElementById("blobCount");
+
+    const generateBtn = document.getElementById("generateBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const svgEl = document.getElementById("patternSvg");
+
+    let currentPalette = [];
+
+    roughnessInput.addEventListener("input", () => {
+      const v = parseFloat(roughnessInput.value);
+      let desc;
+      if (v < 0.15) desc = "very round blobs";
+      else if (v < 0.35) desc = "soft edges";
+      else if (v < 0.65) desc = "slightly jagged blobs";
+      else if (v < 0.85) desc = "rough / fractured blobs";
+      else desc = "very sharp, noisy edges";
+      roughnessLabel.textContent = v.toFixed(2) + " – " + desc;
+    });
+
+    complexityInput.addEventListener("input", () => {
+      const v = parseFloat(complexityInput.value);
+      let desc;
+      if (v < 0.15) desc = "simple / round blobs";
+      else if (v < 0.35) desc = "slightly elongated";
+      else if (v < 0.65) desc = "moderate arms / elongation";
+      else if (v < 0.85) desc = "strong arms / stretched blobs";
+      else desc = "very branchy / chaotic blobs";
+      complexityLabel.textContent = v.toFixed(2) + " – " + desc;
+    });
+
+    extractBtn.addEventListener("click", () => {
+      const files = imgInputs.map(i => i.files[0]).filter(Boolean);
+      if (!files.length) {
+        alert("Please select at least one image to extract a palette from.");
+        return;
+      }
+
+      const k = Math.max(2, Math.min(16, parseInt(colorCountInput.value, 10) || 6));
+
+      extractBtn.disabled = true;
+      extractBtn.textContent = "⏳ Extracting...";
+
+      Promise.all(files.map(fileToImage))
+        .then(images => {
+          const colors = extractPaletteFromImages(images, k);
+          currentPalette = colors;
+          renderPalette();
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Error while extracting the palette.");
+        })
+        .finally(() => {
+          extractBtn.disabled = false;
+          extractBtn.textContent = "🎨 Extract palette";
+        });
+    });
+
+    generateBtn.addEventListener("click", () => {
+      if (!currentPalette.length) {
+        alert("No palette yet. Extract or define a palette first.");
+        return;
+      }
+
+      syncPaletteFromInputs(); // take manual tweaks into account
+
+      const width = clamp(parseInt(tileWidthInput.value, 10) || 800, 100, 4000);
+      const height = clamp(parseInt(tileHeightInput.value, 10) || 600, 100, 4000);
+      const minBlob = parseInt(minBlobInput.value, 10) || 30;
+      const maxBlob = parseInt(maxBlobInput.value, 10) || 140;
+      const roughness = parseFloat(roughnessInput.value) || 0.4;
+      const complexity = parseFloat(complexityInput.value) || 0.5;
+      const blobCount = clamp(parseInt(blobCountInput.value, 10) || 300, 10, 5000);
+
+      generateBtn.disabled = true;
+      generateBtn.textContent = "⏳ Generating...";
+
+      try {
+        createTileablePatternSvg(
+          width,
+          height,
+          minBlob,
+          maxBlob,
+          roughness,
+          complexity,
+          blobCount,
+          currentPalette
+        );
+        downloadBtn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        alert("Error while generating pattern.");
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "🔁 Generate pattern";
+      }
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      const serializer = new XMLSerializer();
+      const source = serializer.serializeToString(svgEl);
+      const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "fractal_camo_tile.svg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    /* ---------- Palette UI ---------- */
+
+    function renderPalette() {
+      paletteContainer.innerHTML = "";
+      currentPalette.forEach((rgb, idx) => {
+        const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+
+        const swatch = document.createElement("div");
+        swatch.className = "swatch";
+
+        const top = document.createElement("div");
+        top.className = "swatch-top";
+
+        const colorPreview = document.createElement("div");
+        colorPreview.className = "swatch-color";
+        colorPreview.style.backgroundColor = hex;
+
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.value = hex;
+
+        const hexLabel = document.createElement("div");
+        hexLabel.className = "swatch-hex";
+        hexLabel.textContent = hex.toUpperCase();
+
+        colorInput.addEventListener("input", () => {
+          colorPreview.style.backgroundColor = colorInput.value;
+          hexLabel.textContent = colorInput.value.toUpperCase();
+        });
+
+        colorInput.dataset.index = idx;
+
+        top.appendChild(colorPreview);
+        top.appendChild(colorInput);
+
+        swatch.appendChild(top);
+        swatch.appendChild(hexLabel);
+
+        paletteContainer.appendChild(swatch);
+      });
+    }
+
+    function syncPaletteFromInputs() {
+      const colorInputs = paletteContainer.querySelectorAll("input[type='color']");
+      colorInputs.forEach(input => {
+        const idx = parseInt(input.dataset.index, 10);
+        const hex = input.value;
+        const rgb = hexToRgb(hex);
+        if (rgb && currentPalette[idx]) {
+          currentPalette[idx] = rgb;
+        }
+      });
+    }
+
+    /* ---------- Image & palette processing ---------- */
+
+    function fileToImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(reader.error);
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function extractPaletteFromImages(images, k) {
+      // Draw all images onto a small canvas to sample pixels
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const targetSize = 256;
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+
+      const samples = [];
+
+      images.forEach(img => {
+        const ratio = Math.min(targetSize / img.width, targetSize / img.height);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        const x = (targetSize - w) / 2;
+        const y = (targetSize - h) / 2;
+
+        ctx.clearRect(0, 0, targetSize, targetSize);
+        ctx.drawImage(img, x, y, w, h);
+
+        const imgData = ctx.getImageData(0, 0, targetSize, targetSize).data;
+        // sample every Nth pixel to save time
+        const step = 8;
+        for (let i = 0; i < imgData.length; i += 4 * step) {
+          const r = imgData[i];
+          const g = imgData[i + 1];
+          const b = imgData[i + 2];
+          const a = imgData[i + 3];
+          if (a > 10) { // ignore almost-transparent
+            samples.push([r, g, b]);
+          }
+        }
+      });
+
+      if (!samples.length) {
+        return [[40, 40, 40], [220, 220, 220]];
+      }
+
+      return kMeans(samples, k, 10);
+    }
+
+    function kMeans(samples, k, maxIter) {
+      // initialize centroids by picking random samples
+      const centroids = [];
+      const used = new Set();
+      while (centroids.length < k && centroids.length < samples.length) {
+        const idx = Math.floor(Math.random() * samples.length);
+        if (!used.has(idx)) {
+          used.add(idx);
+          centroids.push(samples[idx].slice());
+        }
+      }
+
+      const assignments = new Array(samples.length).fill(0);
+
+      for (let iter = 0; iter < maxIter; iter++) {
+        // assignment step
+        for (let i = 0; i < samples.length; i++) {
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          const [r, g, b] = samples[i];
+          for (let c = 0; c < centroids.length; c++) {
+            const [cr, cg, cb] = centroids[c];
+            const dr = r - cr;
+            const dg = g - cg;
+            const db = b - cb;
+            const dist = dr * dr + dg * dg + db * db;
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = c;
+            }
+          }
+          assignments[i] = bestIdx;
+        }
+
+        // update step
+        const sums = Array.from({ length: centroids.length }, () => [0, 0, 0, 0]); // r,g,b,count
+        for (let i = 0; i < samples.length; i++) {
+          const c = assignments[i];
+          const s = samples[i];
+          sums[c][0] += s[0];
+          sums[c][1] += s[1];
+          sums[c][2] += s[2];
+          sums[c][3] += 1;
+        }
+
+        for (let c = 0; c < centroids.length; c++) {
+          if (sums[c][3] === 0) continue;
+          centroids[c][0] = sums[c][0] / sums[c][3];
+          centroids[c][1] = sums[c][1] / sums[c][3];
+          centroids[c][2] = sums[c][2] / sums[c][3];
+        }
+      }
+
+      // round centroids to integer RGB
+      return centroids.map(c => [Math.round(c[0]), Math.round(c[1]), Math.round(c[2])]);
+    }
+
+    /* ---------- Pattern generation ---------- */
+
+    function createTileablePatternSvg(width, height, minBlob, maxBlob, roughness, complexity, blobCount, palette) {
+      // Clear SVG
+      while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+
+      svgEl.setAttribute("width", width);
+      svgEl.setAttribute("height", height);
+      svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      // optional: base rect
+      const bg = document.createElementNS(SVG_NS, "rect");
+      bg.setAttribute("x", 0);
+      bg.setAttribute("y", 0);
+      bg.setAttribute("width", width);
+      bg.setAttribute("height", height);
+      bg.setAttribute("fill", rgbToHex(...(palette[0] || [30, 30, 30])));
+      svgEl.appendChild(bg);
+
+      const layers = blobCount;
+      for (let i = 0; i < layers; i++) {
+        const color = palette[i % palette.length];
+        const hex = rgbToHex(color[0], color[1], color[2]);
+
+        const radius = randomInRange(minBlob, maxBlob);
+        const cx = Math.random() * width;
+        const cy = Math.random() * height;
+
+        addBlobWithWrapping(
+          svgEl,
+          cx,
+          cy,
+          radius,
+          width,
+          height,
+          roughness,
+          complexity,
+          hex
+        );
+      }
+    }
+
+    function addBlobWithWrapping(svg, cx, cy, radius, width, height, roughness, complexity, fill) {
+      const positions = [[cx, cy]];
+      const overlapsLeft = cx - radius < 0;
+      const overlapsRight = cx + radius > width;
+      const overlapsTop = cy - radius < 0;
+      const overlapsBottom = cy + radius > height;
+
+      if (overlapsLeft) positions.push([cx + width, cy]);
+      if (overlapsRight) positions.push([cx - width, cy]);
+      if (overlapsTop) positions.push([cx, cy + height]);
+      if (overlapsBottom) positions.push([cx, cy - height]);
+
+      if (overlapsLeft && overlapsTop) positions.push([cx + width, cy + height]);
+      if (overlapsLeft && overlapsBottom) positions.push([cx + width, cy - height]);
+      if (overlapsRight && overlapsTop) positions.push([cx - width, cy + height]);
+      if (overlapsRight && overlapsBottom) positions.push([cx - width, cy - height]);
+
+      positions.forEach(([px, py]) => {
+        const pathData = generateBlobPath(px, py, radius, roughness, complexity);
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute("d", pathData);
+        path.setAttribute("fill", fill);
+        svg.appendChild(path);
+      });
+    }
+
+    function generateBlobPath(cx, cy, radius, roughness, complexity) {
+      // complexity controls:
+      // - number of segments
+      // - strength and frequency of sinusoidal "arms"
+      // - anisotropy (elongation in one direction)
+
+      const baseSegments = 8;
+      const extraSegments = 24;
+      const segments =
+        baseSegments + Math.floor(extraSegments * (0.2 + 0.8 * complexity));
+
+      // Random main axis orientation for elongation
+      const axisAngle = Math.random() * Math.PI * 2;
+      const maxAnisotropy = 1.8; // 1 = circle, >1 = stretched
+      const anisotropy =
+        1 + complexity * (0.3 + Math.random() * 0.7) * (maxAnisotropy - 1);
+
+      // Sinusoidal "arms"
+      const freq1 = 2 + Math.floor(complexity * 4);   // 2..6 arms
+      const freq2 = 3 + Math.floor(complexity * 5);   // 3..8 arms
+      const phase1 = Math.random() * Math.PI * 2;
+      const phase2 = Math.random() * Math.PI * 2;
+
+      const armAmp1 = 0.15 * complexity; // overall relative modulation
+      const armAmp2 = 0.10 * complexity;
+
+      // Edge roughness adds random high-frequency noise
+      const noiseScale = 0.6 * roughness;
+
+      let d = "";
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+
+        // Base radius
+        let r = radius;
+
+        // Arms modulation (low-frequency sinusoidal)
+        const armFactor =
+          1 +
+          armAmp1 * Math.cos(freq1 * angle + phase1) +
+          armAmp2 * Math.cos(freq2 * angle + phase2);
+
+        r *= armFactor;
+
+        // Directional elongation (elliptical / stretched)
+        const relAngle = angle - axisAngle;
+        // cos^2 term: strongest stretch along axis, 1 orthogonal
+        const stretch =
+          1 + (anisotropy - 1) * Math.cos(relAngle) * Math.cos(relAngle);
+        r *= stretch;
+
+        // Random jitter on edge for roughness
+        const jitter = (Math.random() - 0.5) * 2 * noiseScale;
+        r *= 1 + jitter;
+
+        // Avoid collapsing / negative radius
+        const minR = radius * 0.2;
+        if (r < minR) r = minR;
+
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+
+        if (i === 0) {
+          d += `M ${x.toFixed(2)} ${y.toFixed(2)} `;
+        } else {
+          d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
+        }
+      }
+      d += "Z";
+      return d;
+    }
+
+    /* ---------- Helpers ---------- */
+
+    function clamp(v, min, max) {
+      return Math.min(max, Math.max(min, v));
+    }
+
+    function randomInRange(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function rgbToHex(r, g, b) {
+      return (
+        "#" +
+        [r, g, b]
+          .map(v => {
+            const h = v.toString(16);
+            return h.length === 1 ? "0" + h : h;
+          })
+          .join("")
+      );
+    }
+
+    function hexToRgb(hex) {
+      if (!hex) return null;
+      hex = hex.trim();
+      if (hex[0] === "#") hex = hex.slice(1);
+      if (hex.length === 3) {
+        hex = hex
+          .split("")
+          .map(c => c + c)
+          .join("");
+      }
+      if (hex.length !== 6) return null;
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return [r, g, b];
+    }
+  </script>
+</body>
+</html>
