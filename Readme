@@ -1,0 +1,179 @@
+# Fractal Camo / Tileable Pattern Generator
+
+Generateer naadloos herhaalbare camouflage-achtige patronen op basis van foto’s van de omgeving.  
+Deze tool draait volledig in de browser (pure HTML + JavaScript, geen backend nodig).
+
+Je workflow:
+
+1. Upload 1–3 foto’s van het terrein (bos, woestijn, industrie, etc.).
+2. Extraheer automatisch een kleurenpalet (K-means clustering).
+3. Pas de kleuren handmatig aan.
+4. Genereer een **naadloos herhaalbaar** SVG-patroon met “organische” blobs.
+5. Download de SVG en gebruik ‘m in CAD, DTP, textieldruk, etc.
+
+---
+
+## Features
+
+- ✅ Tot 3 input-afbeeldingen van de omgeving
+- ✅ Automatische kleurextractie met K-means (instelbaar aantal kleuren)
+- ✅ Handmatige kleur-correctie per swatch (`<input type="color">`)
+- ✅ Random “blobs” met:
+  - minimale en maximale blob-grootte
+  - edge-roughness (fractal vs rond)
+  - blob-complexiteit (armen, elongatie)
+  - blob-dichtheid (aantal blobs)
+- ✅ Naadloos tileable in zowel X- als Y-richting
+- ✅ Export als **SVG** (vector, schaalbaar, bewerkbaar)
+- ✅ Draait 100% client-side (geen uploads naar een server)
+
+---
+
+## Gebruik
+
+### 1. Download & openen
+
+1. Sla het HTML-bestand op, bijvoorbeeld als `fractal_camo.html`.
+2. Open het bestand lokaal in je browser:
+   - Dubbelklik, of  
+   - Sleep het naar een open browservenster.
+
+Er is geen extra installatie of server nodig.
+
+### 2. Afbeeldingen toevoegen
+
+Bovenaan de linkerkolom:
+
+1. Klik op de drie **file inputs**:
+   - `Source images (terrain / environment)`
+   - Je kunt 1, 2 of 3 afbeeldingen kiezen (bijvoorbeeld foto’s van bos, hei, stad, etc.).
+2. Kies bij **Number of colors** hoeveel kleuren je uit de beelden wilt halen (bijv. 4–8).
+3. Klik op **🎨 Extract palette**.
+
+In de **palette**-sectie verschijnen nu de gevonden kleuren.
+
+### 3. Kleuren tweaken
+
+Elke kleur-swatch toont:
+
+- Een kleurvlak
+- Een kleur-picker (`input type="color"`)
+- De hex-waarde (bijv. `#6A7B3F`)
+
+Je kunt:
+
+- Direct in de color-picker een tint kiezen.
+- Hex-waarden uitlezen en eventueel elders gebruiken.
+
+Deze palette-kleuren worden gebruikt voor alle blobs in het patroon.
+
+### 4. Patroon-instellingen
+
+Onder **Pattern settings** vind je de belangrijkste sliders en velden:
+
+- **Tile width (px) / Tile height (px)**  
+  Grootte van de output-tegel in pixels. Deze tegel is naadloos te herhalen.
+
+- **Min blob size / Max blob size (px)**  
+  Globale grootte-range van de blobs.  
+  - Kleinere waarden → fijnere structuur  
+  - Grotere waarden → grotere vlekken
+
+- **Fractal vs round (edge roughness)**  
+  Slider `0.0 – 1.0`  
+  - Dichter bij 0: ronder, zachtere randen  
+  - Richting 1: grillige, hoekige randen
+
+- **Blob complexity (arms & elongation)**  
+  Slider `0.0 – 1.0`  
+  - Dichter bij 0: simpele, bijna ronde blobs  
+  - Richting 1: meer armen, uitgerekte vormen, “takken”
+
+- **Blob density (# blobs)**  
+  - Hoe hoger, hoe dichter en drukker het patroon wordt.
+
+### 5. Patroon genereren & downloaden
+
+1. Klik op **🔁 Generate pattern**.  
+   - Rechts zie je de live SVG-preview.
+2. Tevreden? Klik op **⬇️ Download SVG**.  
+   - Het bestand `fractal_camo_tile.svg` wordt gedownload.
+3. Herhaal de tegel in je favoriete tool (Illustrator, Inkscape, CAD, CSS background, textieldruk-software, etc.).
+
+---
+
+## Hoe het werkt (technisch overzicht)
+
+### 1. Kleurenpalet uit afbeeldingen
+
+- Alle geselecteerde afbeeldingen worden naar een interne canvas van ~256×256 geschaald.
+- We sampling een subset van pixels (om performance te sparen).
+- Op de RGB-waarden draaien we een simpele **K-means clustering**:
+  - `Number of colors` = K
+  - De K cluster-centers leveren het palet (R, G, B).
+- Resultaat: een compacte set omgevingskleuren, gebaseerd op de inputfoto’s.
+
+### 2. Blob-generatie
+
+Voor elke blob:
+
+1. Er wordt een **random radius** gekozen binnen `[minBlob, maxBlob]`.
+2. Er wordt een **random center (cx, cy)** gekozen binnen de tegel.
+3. Een **hoofd-as-richting** (axisAngle) wordt random gekozen.
+4. De blob wordt als polygon opgebouwd:
+
+   - Aantal segmenten hangt af van **complexity** (meer complex = meer punten).
+   - De radius per hoek wordt gemoduleerd door:
+     - sinusfuncties met verschillende frequenties en fases → “armen”
+     - anisotropie langs de hoofd-as → uitgerekte blobs
+     - random jitter → ruwe / fractal rand
+
+5. De punten worden in volgorde verbonden (`M ... L ... Z` → SVG `path`).
+
+### 3. Tileable randafhandeling (wrap)
+
+Om naadloze herhaling te krijgen:
+
+- Elke blob wordt eerst op `(cx, cy)` getekend.
+- Als de blob over een rand steekt, wordt hij **gedupliceerd** aan de overkant:
+  - links ↔ rechts (± width)
+  - boven ↔ onder (± height)
+  - en combinaties voor de hoeken
+- Daardoor sluiten de randen perfect op elkaar aan als je de tile herhaalt.
+
+---
+
+## Handige presets (suggesties)
+
+**Bos-achtig, redelijk rustig:**
+
+- Number of colors: `4–6`
+- Min blob: `40`
+- Max blob: `160`
+- Roughness: `0.3`
+- Complexity: `0.4`
+- Blob density: `250–400`
+
+**High-contrast urban / rocky:**
+
+- Number of colors: `6–8`
+- Min blob: `20`
+- Max blob: `100`
+- Roughness: `0.6`
+- Complexity: `0.7`
+- Blob density: `400–700`
+
+---
+
+## Lokale ontwikkeling / GitHub Pages
+
+### Lokaal
+
+Omdat het 1 HTML-bestand is, heb je alleen een browser nodig.
+
+Wil je toch een kleine dev-server (voor bijv. CORS-issues bij sommige browsers):
+
+```bash
+# in dezelfde map als fractal_camo.html
+python -m http.server 8000
+# open http://localhost:8000/fractal_camo.html
